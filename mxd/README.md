@@ -224,7 +224,77 @@ There will not be any restrictions on that asset, meaning, every dataspace membe
 
 > TODO: add link to policy generator tool
 
-> TODO: curl commands
+Asset:
+```shell
+curl -X POST -H 'X-Api-Key: password' -H 'Content-Type: application/json' \
+	-d '{
+		"@context": {
+			"edc": "https://w3id.org/edc/v0.0.1/ns/"
+		},
+		"@type": "Asset",
+		"@id": "test", 
+		"properties": {
+			"description": "HTTP Test asset"
+		},
+		"dataAddress": {
+			"@type": "DataAddress",
+			"type": "HttpData",
+			"baseUrl": "https://jsonplaceholder.typicode.com/todos"
+		}
+	}' \
+	http://localhost/alice/management/v3/assets
+```
+
+Policy (is BPN-restricted):
+```shell
+curl -X POST -H 'X-Api-Key: password' -H 'Content-Type: application/json' \
+	-d '{
+		"@context": {
+			"odrl": "http://www.w3.org/ns/odrl/2/"
+		},
+		"@type": "PolicyDefinitionRequestDto",
+		"@id": "test",
+		"policy": {
+			"@type": "Policy",
+			"odrl:permission" : [{
+				"odrl:action" : "USE",
+				"odrl:constraint" : {
+					"@type": "LogicalConstraint",
+					"odrl:or" : [{
+						"@type" : "Constraint",
+						"odrl:leftOperand" : "BusinessPartnerNumber",
+						"odrl:operator" : {
+							"@id": "odrl:eq"
+						},
+						"odrl:rightOperand" : "BPNL000000000002"
+					}]
+				}
+			}]
+		}
+	}' \
+	http://localhost/alice/management/v2/policydefinitions
+```
+
+Contract definition:
+```shell
+curl -X POST -H 'X-Api-Key: password' -H 'Content-Type: application/json' \
+	-d '{
+		"@context": {
+			"edc": "https://w3id.org/edc/v0.0.1/ns/"
+		},
+		"@id": "test",
+		"@type": "ContractDefinition",
+		"accessPolicyId": "test",
+		"contractPolicyId": "test",
+		"assetsSelector" : {
+			"@type" : "CriterionDto",
+			"operandLeft": "https://w3id.org/edc/v0.0.1/ns/id",
+			"operator": "=",
+			"operandRight": "test"
+		}
+	}' \
+	http://localhost/alice/management/v2/contractdefinitions
+```
 
 ### 3.2 Add a restricted `asset`
 
@@ -342,6 +412,182 @@ The catalog response will look like this:
 In this case the provider, with participant id `BPNL000000000001`, is offering some data with id `1`, description
 `Product EDC Demo Asset 1`, throught the offer `MQ==:MQ==:MDJlMGRlOWUtNzdhZS00N2FhLTg5ODktYzEyMTdhMDE4ZjJh` and the `BusinessPartnerNumber` policy
 restriction. Those informations will be used for negotiating a contract with the provider.
+
+```shell
+curl -X POST -H 'X-Api-Key: password' -H 'Content-Type: application/json' \
+	-d '{
+		"@context": {
+			"edc": "https://w3id.org/edc/v0.0.1/ns/"
+		},
+		"@type": "CatalogRequest",
+		"counterPartyAddress":"http://alice-controlplane:8084/api/v1/dsp",
+		"protocol": "dataspace-protocol-http",
+		"querySpec": {
+			"offset": 0,
+			"limit": 50
+		}
+	}' \
+	http://localhost/bob/management/v2/catalog/request
+```
+
+This request will return Alice's catalog, which should contain 3 datasets: the two pre-seeded ones and our newly created
+one:
+
+```shell
+{
+    "@id": "3d078b71-2021-4d4f-8618-ad252f75a4dd",
+    "@type": "dcat:Catalog",
+    "dcat:dataset": [
+        {
+            "@id": "1",
+            "@type": "dcat:Dataset",
+            "odrl:hasPolicy": {
+                "@id": "MQ==:MQ==:OWJhNDJlZGEtZTFjMi00OTZhLWI4YmYtZTNjOWI1MDA4MGU5",
+                "@type": "odrl:Set",
+                "odrl:permission": {
+                    "odrl:target": "1",
+                    "odrl:action": {
+                        "odrl:type": "USE"
+                    },
+                    "odrl:constraint": {
+                        "odrl:or": {
+                            "odrl:leftOperand": "BusinessPartnerNumber",
+                            "odrl:operator": {
+                                "@id": "odrl:eq"
+                            },
+                            "odrl:rightOperand": "BPNL000000000002"
+                        }
+                    }
+                },
+                "odrl:prohibition": [],
+                "odrl:obligation": [],
+                "odrl:target": "1"
+            },
+            "dcat:distribution": [
+                {
+                    "@type": "dcat:Distribution",
+                    "dct:format": {
+                        "@id": "HttpProxy"
+                    },
+                    "dcat:accessService": "89217159-3d5d-475c-acdb-aac80e11e8ae"
+                },
+                {
+                    "@type": "dcat:Distribution",
+                    "dct:format": {
+                        "@id": "AmazonS3"
+                    },
+                    "dcat:accessService": "89217159-3d5d-475c-acdb-aac80e11e8ae"
+                }
+            ],
+            "edc:description": "Product EDC Demo Asset 1",
+            "edc:id": "1"
+        },
+        {
+            "@id": "2",
+            "@type": "dcat:Dataset",
+            "odrl:hasPolicy": {
+                "@id": "Mg==:Mg==:NzI2ZjJmMzMtYjI0NS00NmJjLWJlMjEtMGNkMzU1MjQxODVl",
+                "@type": "odrl:Set",
+                "odrl:permission": {
+                    "odrl:target": "2",
+                    "odrl:action": {
+                        "odrl:type": "USE"
+                    },
+                    "odrl:constraint": {
+                        "odrl:or": {
+                            "odrl:leftOperand": "BusinessPartnerNumber",
+                            "odrl:operator": {
+                                "@id": "odrl:eq"
+                            },
+                            "odrl:rightOperand": "BPNL000000000002"
+                        }
+                    }
+                },
+                "odrl:prohibition": [],
+                "odrl:obligation": [],
+                "odrl:target": "2"
+            },
+            "dcat:distribution": [
+                {
+                    "@type": "dcat:Distribution",
+                    "dct:format": {
+                        "@id": "HttpProxy"
+                    },
+                    "dcat:accessService": "89217159-3d5d-475c-acdb-aac80e11e8ae"
+                },
+                {
+                    "@type": "dcat:Distribution",
+                    "dct:format": {
+                        "@id": "AmazonS3"
+                    },
+                    "dcat:accessService": "89217159-3d5d-475c-acdb-aac80e11e8ae"
+                }
+            ],
+            "edc:description": "Product EDC Demo Asset 2",
+            "edc:id": "2"
+        },
+        {
+            "@id": "test",
+            "@type": "dcat:Dataset",
+            "odrl:hasPolicy": {
+                "@id": "dGVzdA==:dGVzdA==:ZDcyN2U4NDgtMzdmMi00MjZlLWIzNWYtNTU2NzdiNGRmZDFl",
+                "@type": "odrl:Set",
+                "odrl:permission": {
+                    "odrl:target": "test",
+                    "odrl:action": {
+                        "odrl:type": "USE"
+                    },
+                    "odrl:constraint": {
+                        "odrl:or": {
+                            "odrl:leftOperand": "BusinessPartnerNumber",
+                            "odrl:operator": {
+                                "@id": "odrl:eq"
+                            },
+                            "odrl:rightOperand": "BPNL000000000002"
+                        }
+                    }
+                },
+                "odrl:prohibition": [],
+                "odrl:obligation": [],
+                "odrl:target": "test"
+            },
+            "dcat:distribution": [
+                {
+                    "@type": "dcat:Distribution",
+                    "dct:format": {
+                        "@id": "HttpProxy"
+                    },
+                    "dcat:accessService": "89217159-3d5d-475c-acdb-aac80e11e8ae"
+                },
+                {
+                    "@type": "dcat:Distribution",
+                    "dct:format": {
+                        "@id": "AmazonS3"
+                    },
+                    "dcat:accessService": "89217159-3d5d-475c-acdb-aac80e11e8ae"
+                }
+            ],
+            "edc:description": "HTTP Test asset",
+            "edc:id": "test"
+        }
+    ],
+    "dcat:service": {
+        "@id": "89217159-3d5d-475c-acdb-aac80e11e8ae",
+        "@type": "dcat:DataService",
+        "dct:terms": "connector",
+        "dct:endpointUrl": "http://alice-controlplane:8084/api/v1/dsp"
+    },
+    "edc:participantId": "BPNL000000000001",
+    "@context": {
+        "dct": "https://purl.org/dc/terms/",
+        "tx": "https://w3id.org/tractusx/v0.0.1/ns/",
+        "edc": "https://w3id.org/edc/v0.0.1/ns/",
+        "dcat": "https://www.w3.org/ns/dcat/",
+        "odrl": "http://www.w3.org/ns/odrl/2/",
+        "dspace": "https://w3id.org/dspace/v0.8/"
+    }
+}
+```
 
 ## 5. Bob transfers data from Alice
 
