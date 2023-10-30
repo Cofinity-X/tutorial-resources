@@ -1,5 +1,5 @@
 #
-#  Copyright (c) 2023 Contributors to the Eclipse Foundation
+#  Copyright (c) 2023 Bayerische Motoren Werke Aktiengesellschaft
 #
 #  See the NOTICE file(s) distributed with this work for additional
 #  information regarding copyright ownership.
@@ -16,27 +16,22 @@
 #
 #  SPDX-License-Identifier: Apache-2.0
 #
+---
+name: "Run Tests"
+description: "Install newman and run test configured in postman collection."
 
-output "aes_key" {
-  value = local.aes_key_b64
-}
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
 
-output "client_secret" {
-  value = local.client_secret
-}
-output "database-name" {
-  value = var.database-name
-}
+    - name: Install newman
+      shell: bash
+      run: npm install -g newman
 
-output "urls" {
-  value = {
-    management = local.management_url
-    health     = local.health_url
-    proxy      = local.proxy_url
-    public     = local.public_url
-  }
-}
-
-output "node-ip" {
-  value = kubernetes_service.controlplane-service.spec.0.cluster_ip
-}
+    - name: Run Newman
+      shell: bash
+      run: newman run mxd/postman/management_api_tests.json

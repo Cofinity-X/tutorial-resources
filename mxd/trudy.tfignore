@@ -17,26 +17,23 @@
 #  SPDX-License-Identifier: Apache-2.0
 #
 
-output "aes_key" {
-  value = local.aes_key_b64
-}
-
-output "client_secret" {
-  value = local.client_secret
-}
-output "database-name" {
-  value = var.database-name
-}
-
-output "urls" {
-  value = {
-    management = local.management_url
-    health     = local.health_url
-    proxy      = local.proxy_url
-    public     = local.public_url
+# Trudy connector
+module "trudy-connector" {
+  source            = "./modules/connector"
+  humanReadableName = "trudy"
+  participantId     = var.trudy-bpn
+  database-host     = local.pg-ip
+  database-name     = "trudy"
+  database-credentials = {
+    user     = "postgres"
+    password = "postgres"
   }
-}
-
-output "node-ip" {
-  value = kubernetes_service.controlplane-service.spec.0.cluster_ip
+  ssi-config = {
+    miw-url            = "http://${kubernetes_service.miw.metadata.0.name}:${var.miw-api-port}"
+    miw-authorityId    = var.miw-bpn
+    oauth-tokenUrl     = "http://${kubernetes_service.keycloak.metadata.0.name}:${var.keycloak-port}/realms/miw_test/protocol/openid-connect/token"
+    oauth-clientid     = "trudy_private_client"
+    oauth-secretalias  = "client_secret_alias"
+    oauth-clientsecret = "trudy_private_client"
+  }
 }
